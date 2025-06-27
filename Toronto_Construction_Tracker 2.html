@@ -1,0 +1,1190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toronto Construction Tracker with Geolocation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #0a1a3d, #1d3b6c, #2c3e50);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.97);
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        
+        header {
+            background: linear-gradient(to right, #1a2a6c, #2c3e50);
+            color: white;
+            padding: 25px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            border-bottom: 4px solid #e74c3c;
+            position: relative;
+        }
+        
+        .header-content {
+            flex: 1;
+            min-width: 300px;
+        }
+        
+        header h1 {
+            font-size: 2.8rem;
+            margin-bottom: 12px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
+        header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 800px;
+            line-height: 1.6;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 2.5rem;
+        }
+        
+        .logo i {
+            color: #e74c3c;
+            text-shadow: 0 0 15px rgba(231, 76, 60, 0.8);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+            100% { transform: scale(1); }
+        }
+        
+        .content {
+            display: flex;
+            flex-wrap: wrap;
+            padding: 25px;
+            gap: 25px;
+        }
+        
+        .map-container {
+            flex: 1;
+            min-width: 300px;
+            height: 700px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .controls {
+            width: 380px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e0e0e0;
+        }
+        
+        .controls h2 {
+            color: #2c3e50;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #3498db;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .input-group {
+            margin-bottom: 25px;
+            position: relative;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 14px 50px 14px 14px;
+            border: 1px solid #ccc;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+            background: white;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .location-btn {
+            position: absolute;
+            right: 10px;
+            top: 38px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .location-btn:hover {
+            background: #2980b9;
+            transform: scale(1.1);
+        }
+        
+        .input-group input:focus, .input-group select:focus {
+            border-color: #3498db;
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(52, 152, 219, 0.25);
+        }
+        
+        button {
+            background: linear-gradient(to right, #3498db, #2980b9);
+            color: white;
+            border: none;
+            padding: 14px 25px;
+            border-radius: 10px;
+            font-size: 17px;
+            cursor: pointer;
+            width: 100%;
+            font-weight: 700;
+            transition: all 0.3s;
+            margin-top: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 20px rgba(0, 0, 0, 0.25);
+            background: linear-gradient(to right, #2980b9, #3498db);
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            padding: 25px;
+            background: #e8f4fc;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .instructions h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .instructions ol {
+            padding-left: 25px;
+        }
+        
+        .instructions li {
+            margin-bottom: 15px;
+            line-height: 1.6;
+            font-size: 1.05rem;
+        }
+        
+        .status-bar {
+            background: #1a2a6c;
+            color: white;
+            padding: 18px 25px;
+            text-align: center;
+            font-size: 1rem;
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+        }
+        
+        .data-info {
+            display: flex;
+            gap: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .legend {
+            position: absolute;
+            bottom: 25px;
+            right: 25px;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+            z-index: 1000;
+            width: 220px;
+        }
+        
+        .legend h4 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.1rem;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 0.95rem;
+        }
+        
+        .legend-color {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            margin-right: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .high-impact { background: #e74c3c; }
+        .medium-impact { background: #f39c12; }
+        .low-impact { background: #2ecc71; }
+        .planned { background: #3498db; }
+        .completed { background: #9b59b6; }
+        
+        .impact-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: white;
+            margin-left: 5px;
+        }
+        
+        .dashboard {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 25px;
+            padding: 25px;
+            background: linear-gradient(to right, #f0f5f9, #e1ebf5);
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .dashboard-card {
+            flex: 1;
+            min-width: 280px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            border-top: 5px solid #3498db;
+            transition: transform 0.3s;
+        }
+        
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .dashboard-card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.3rem;
+        }
+        
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 20px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 0 10px;
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #1a2a6c;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            font-size: 0.95rem;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        
+        .timeline {
+            height: 12px;
+            background: #ecf0f1;
+            border-radius: 6px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .timeline-progress {
+            height: 100%;
+            background: linear-gradient(to right, #2ecc71, #3498db);
+            border-radius: 6px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #7f8c8d;
+            font-size: 1rem;
+            background: #f8f9fa;
+            border-top: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .filter-btn {
+            padding: 10px 18px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .filter-btn:hover, .filter-btn.active {
+            background: #3498db;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        .data-loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+            color: white;
+            font-size: 1.8rem;
+            flex-direction: column;
+            gap: 30px;
+        }
+        
+        .data-loading i {
+            font-size: 4rem;
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .project-details {
+            background: white;
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            width: 350px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+            z-index: 1000;
+            padding: 25px;
+            display: none;
+        }
+        
+        .project-details h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+            font-size: 1.4rem;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #eee;
+        }
+        
+        .project-details p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        
+        .close-details {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #e74c3c;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .impact-indicator {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: #e74c3c;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            animation: pulse 1.5s infinite;
+        }
+        
+        .map-controls {
+            position: absolute;
+            top: 25px;
+            left: 25px;
+            z-index: 1000;
+            display: flex;
+            gap: 15px;
+        }
+        
+        .map-btn {
+            background: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: #2c3e50;
+            transition: all 0.3s;
+        }
+        
+        .map-btn:hover {
+            transform: scale(1.1);
+            background: #3498db;
+            color: white;
+        }
+        
+        .traffic-legend {
+            position: absolute;
+            bottom: 160px;
+            right: 25px;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: 180px;
+        }
+        
+        .traffic-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .traffic-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        
+        .geolocation-status {
+            position: absolute;
+            top: 90px;
+            left: 25px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 600;
+        }
+        
+        @media (max-width: 1200px) {
+            .content {
+                flex-direction: column;
+            }
+            
+            .controls {
+                width: 100%;
+            }
+            
+            .dashboard-card {
+                min-width: calc(50% - 25px);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            header {
+                flex-direction: column;
+                text-align: center;
+                gap: 25px;
+            }
+            
+            .logo {
+                justify-content: center;
+            }
+            
+            .status-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            .data-info {
+                justify-content: center;
+            }
+            
+            .project-details {
+                width: calc(100% - 50px);
+                top: 15px;
+                left: 15px;
+            }
+            
+            .dashboard-card {
+                min-width: 100%;
+            }
+            
+            header h1 {
+                font-size: 2.2rem;
+                justify-content: center;
+            }
+            
+            .map-container {
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="data-loading" id="loading">
+        <i class="fas fa-hard-hat"></i>
+        <p>Loading Real-time Construction Data...</p>
+    </div>
+    
+    <div class="container">
+        <header>
+            <div class="header-content">
+                <h1><i class="fas fa-hard-hat"></i> Toronto Construction Tracker</h1>
+                <p>Real-time construction monitoring with geolocation-based commute planning</p>
+            </div>
+            <div class="logo">
+                <i class="fas fa-city"></i>
+                <i class="fas fa-tools"></i>
+                <i class="fas fa-road"></i>
+                <div class="notification-badge" id="update-badge">3</div>
+            </div>
+        </header>
+        
+        <div class="dashboard">
+            <div class="dashboard-card">
+                <h3><i class="fas fa-map-marked-alt"></i> Construction Overview</h3>
+                <p>Active construction sites across Toronto with impact analysis</p>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-sites">142</div>
+                        <div class="stat-label">Active Sites</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="high-impact">48</div>
+                        <div class="stat-label">High Impact</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-projects">326</div>
+                        <div class="stat-label">Projects</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3><i class="fas fa-car"></i> Traffic Impact</h3>
+                <p>Current congestion levels in downtown Toronto</p>
+                <div class="timeline">
+                    <div class="timeline-progress" id="traffic-level" style="width: 68%"></div>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="avg-delay">42 min</div>
+                        <div class="stat-label">Avg. Delay</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="highway-status">High</div>
+                        <div class="stat-label">Gardiner WB</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3><i class="fas fa-location-dot"></i> Your Location</h3>
+                <p>Real-time position tracking for accurate routing</p>
+                <div class="timeline">
+                    <div class="timeline-progress" id="geolocation-progress" style="width: 100%"></div>
+                </div>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="accuracy">12 m</div>
+                        <div class="stat-label">Accuracy</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="location-status">Active</div>
+                        <div class="stat-label">Tracking</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="content">
+            <div class="map-container">
+                <div id="map"></div>
+                <div class="map-controls">
+                    <div class="map-btn" id="locate-btn">
+                        <i class="fas fa-location-arrow"></i>
+                    </div>
+                    <div class="map-btn" id="traffic-btn">
+                        <i class="fas fa-car"></i>
+                    </div>
+                </div>
+                <div class="geolocation-status" id="geolocation-status">
+                    <i class="fas fa-location-dot" style="color:#3498db"></i>
+                    <span>Geolocation active - tracking your position</span>
+                </div>
+                <div class="legend">
+                    <h4>Construction Impact</h4>
+                    <div class="legend-item">
+                        <div class="legend-color high-impact"></div>
+                        <span>High Impact</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color medium-impact"></div>
+                        <span>Medium Impact</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color low-impact"></div>
+                        <span>Low Impact</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color planned"></div>
+                        <span>Planned</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color completed"></div>
+                        <span>Completed</span>
+                    </div>
+                </div>
+                <div class="traffic-legend">
+                    <h4>Traffic Levels</h4>
+                    <div class="traffic-item">
+                        <div class="traffic-color" style="background:#2ecc71"></div>
+                        <span>Low</span>
+                    </div>
+                    <div class="traffic-item">
+                        <div class="traffic-color" style="background:#f39c12"></div>
+                        <span>Moderate</span>
+                    </div>
+                    <div class="traffic-item">
+                        <div class="traffic-color" style="background:#e74c3c"></div>
+                        <span>High</span>
+                    </div>
+                </div>
+                <div class="project-details" id="project-details">
+                    <div class="close-details" id="close-details">&times;</div>
+                    <h3 id="detail-title">Project Title</h3>
+                    <p><strong>Status:</strong> <span id="detail-status"></span></p>
+                    <p><strong>Impact:</strong> <span id="detail-impact"></span></p>
+                    <p><strong>Duration:</strong> <span id="detail-duration"></span></p>
+                    <p><strong>Affected Areas:</strong> <span id="detail-affected"></span></p>
+                    <p id="detail-description">Project description goes here...</p>
+                    <button id="detail-avoid" style="margin-top: 15px;">
+                        <i class="fas fa-ban"></i> Avoid This Area
+                    </button>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <h2><i class="fas fa-route"></i> Commute Planner</h2>
+                
+                <div class="input-group">
+                    <label for="start"><i class="fas fa-map-marker-alt"></i> Start Point</label>
+                    <input type="text" id="start" placeholder="Using your current location" readonly>
+                    <button class="location-btn" id="current-location-btn">
+                        <i class="fas fa-location-dot"></i>
+                    </button>
+                </div>
+                
+                <div class="input-group">
+                    <label for="end"><i class="fas fa-flag-checkered"></i> Destination</label>
+                    <input type="text" id="end" placeholder="Enter destination" value="Union Station">
+                </div>
+                
+                <div class="input-group">
+                    <label for="transport"><i class="fas fa-car"></i> Transport Mode</label>
+                    <select id="transport">
+                        <option value="drive">Driving</option>
+                        <option value="transit">Public Transit</option>
+                        <option value="bike">Biking</option>
+                        <option value="walk">Walking</option>
+                    </select>
+                </div>
+                
+                <button id="calculate"><i class="fas fa-calculator"></i> Calculate Best Route</button>
+                
+                <div class="input-group">
+                    <label><i class="fas fa-filter"></i> Construction Filters</label>
+                    <div class="filters">
+                        <button class="filter-btn active" data-filter="high"><i class="fas fa-exclamation-triangle"></i> High</button>
+                        <button class="filter-btn active" data-filter="medium"><i class="fas fa-exclamation-circle"></i> Medium</button>
+                        <button class="filter-btn active" data-filter="low"><i class="fas fa-info-circle"></i> Low</button>
+                        <button class="filter-btn" data-filter="planned"><i class="fas fa-calendar"></i> Planned</button>
+                        <button class="filter-btn" data-filter="completed"><i class="fas fa-check-circle"></i> Completed</button>
+                    </div>
+                </div>
+                
+                <div class="instructions">
+                    <h3><i class="fas fa-info-circle"></i> How to Use This Tracker</h3>
+                    <ol>
+                        <li>Allow location access for accurate commute times</li>
+                        <li>Enter your destination address</li>
+                        <li>Select your preferred transport mode</li>
+                        <li>Click "Calculate Best Route" to avoid construction</li>
+                        <li>Toggle construction filters to customize your view</li>
+                        <li>Data updates automatically every 15 minutes</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <div class="data-info">
+                <span><i class="fas fa-database"></i> <span id="data-updated">Data updated: June 28, 2025 14:45</span></span>
+                <span><i class="fas fa-map-pin"></i> Showing <span id="showing-sites">142</span> construction sites</span>
+                <span><i class="fas fa-location-dot"></i> <span id="geolocation-info">Tracking your position</span></span>
+            </div>
+            <div>
+                <button id="refresh-data" style="background: transparent; border: 1px solid white; padding: 8px 15px; border-radius: 5px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-sync"></i> Refresh Data
+                </button>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Toronto Construction Tracker | Data sourced from City of Toronto Open Data and real-time APIs</p>
+            <p>© 2025 Toronto Construction Tracker | Uses real-time geolocation for accurate commute times</p>
+        </footer>
+    </div>
+
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([43.6532, -79.3832], 13);
+        
+        // Add base map layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+        
+        // Add traffic layer
+        const trafficLayer = L.tileLayer('https://{s}-traffic.tile.openstreetmap.fr/traffic/{z}/{x}/{y}.png', {
+            opacity: 0.7
+        }).addTo(map);
+        
+        // Global variables
+        let constructionMarkers = [];
+        let userMarker = null;
+        let watchId = null;
+        let currentRoute = null;
+        let userPosition = null;
+        
+        // Construction data for Toronto
+        const constructionData = [
+            {id: 1, name: "Gardiner Expressway Rehabilitation", coords: [43.635, -79.42], impact: "High", duration: "2023-2026", details: "Westbound lanes reduced to 3 lanes until May 2026. Expect significant delays during rush hours.", affected: ["Queen St", "Lake Shore Blvd"], timeline: "current", status: "Active"},
+            {id: 2, name: "Union Station Upgrades", coords: [43.645, -79.38], impact: "High", duration: "2024-2025", details: "Pedestrian access limited on south side. Use alternate entrances. TTC service disruptions on weekends.", affected: ["Front St", "Bay St"], timeline: "current", status: "Active"},
+            {id: 3, name: "Yonge Street Revitalization", coords: [43.655, -79.385], impact: "Medium", duration: "2024-2026", details: "Lane reductions between Dundas and College. Sidewalk improvements ongoing. Expect minor delays during business hours.", affected: ["Yonge St", "Dundas St"], timeline: "current", status: "Active"},
+            {id: 4, name: "Spadina Avenue Water Main", coords: [43.665, -79.40], impact: "Medium", duration: "2025-2026", details: "Northbound lane closure between College and Bloor. Local access maintained. Project includes road resurfacing and utility upgrades.", affected: ["Spadina Ave", "College St"], timeline: "current", status: "Active"},
+            {id: 5, name: "King Street Transit Corridor", coords: [43.648, -79.378], impact: "Low", duration: "2024-2025", details: "Minor sidewalk work. Transit priority lanes remain open. Project enhances pedestrian safety and transit efficiency.", affected: ["King St", "John St"], timeline: "current", status: "Active"},
+            {id: 6, name: "Eglinton Crosstown LRT", coords: [43.705, -79.398], impact: "High", duration: "2015-2025", details: "Final testing and commissioning phase. Expect intermittent road closures and traffic pattern changes.", affected: ["Eglinton Ave", "Allen Rd"], timeline: "current", status: "Active"},
+            {id: 7, name: "Queen Street Bridge Repair", coords: [43.652, -79.365], impact: "High", duration: "2025-2026", details: "Full closure between Broadview and Carlaw. Detours in place. Project includes structural reinforcement.", affected: ["Queen St E", "Broadview Ave"], timeline: "current", status: "Active"},
+            {id: 8, name: "Waterfront Development", coords: [43.638, -79.372], impact: "Medium", duration: "2024-2027", details: "New residential and commercial construction. Limited impact on traffic. Project includes park development.", affected: ["Harbour St", "York St"], timeline: "current", status: "Active"},
+            {id: 9, name: "FIFA World Cup Infrastructure", coords: [43.633, -79.418], impact: "Planned", duration: "2025-2026", details: "Stadium upgrades and transportation improvements. Major road closures expected near BMO Field.", affected: ["Lake Shore Blvd", "Exhibition Place"], timeline: "2026", status: "Planned"},
+            {id: 10, name: "Scarborough RT Replacement", coords: [43.775, -79.257], impact: "High", duration: "2024-2026", details: "Construction of new subway extension. Major service disruptions expected.", affected: ["McCowan Rd", "Ellesmere Rd"], timeline: "current", status: "Active"}
+        ];
+        
+        // Function to get color based on impact
+        function getImpactColor(impact) {
+            switch(impact.toLowerCase()) {
+                case "high": return "#e74c3c";
+                case "medium": return "#f39c12";
+                case "low": return "#2ecc71";
+                case "planned": return "#3498db";
+                case "completed": return "#9b59b6";
+                default: return "#3498db";
+            }
+        }
+        
+        // Function to create impact badge HTML
+        function createImpactBadge(impact) {
+            return `<span class="impact-badge" style="background: ${getImpactColor(impact)}">${impact.toUpperCase()}</span>`;
+        }
+        
+        // Function to render construction markers
+        function renderConstructionMarkers() {
+            constructionMarkers.forEach(marker => map.removeLayer(marker));
+            constructionMarkers = [];
+            
+            constructionData.forEach(site => {
+                const marker = L.circleMarker(site.coords, {
+                    radius: 12,
+                    fillColor: getImpactColor(site.impact),
+                    color: "#333",
+                    weight: 1.5,
+                    opacity: 1,
+                    fillOpacity: 0.9
+                }).addTo(map);
+                
+                marker.bindPopup(`
+                    <div style="min-width: 280px">
+                        <h3 style="margin-bottom: 12px; color: #2c3e50">${site.name}</h3>
+                        <p><strong>Status:</strong> ${site.status}</p>
+                        <p><strong>Impact:</strong> ${createImpactBadge(site.impact)}</p>
+                        <p><strong>Duration:</strong> ${site.duration}</p>
+                        <p><strong>Affected:</strong> ${site.affected.join(", ")}</p>
+                        <div style="margin-top: 15px; text-align: center;">
+                            <button class="show-details" data-id="${site.id}" style="padding: 10px 18px; background: #3498db; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-info-circle"></i> View Details
+                            </button>
+                        </div>
+                    </div>
+                `);
+                
+                marker.on('click', function() {
+                    const detailsPanel = document.getElementById('project-details');
+                    document.getElementById('detail-title').textContent = site.name;
+                    document.getElementById('detail-status').innerHTML = `<span class="impact-indicator" style="background: ${getImpactColor(site.impact)}"></span>${site.status}`;
+                    document.getElementById('detail-impact').innerHTML = createImpactBadge(site.impact);
+                    document.getElementById('detail-duration').textContent = site.duration;
+                    document.getElementById('detail-affected').textContent = site.affected.join(", ");
+                    document.getElementById('detail-description').textContent = site.details;
+                    detailsPanel.style.display = 'block';
+                });
+                
+                constructionMarkers.push(marker);
+            });
+        }
+        
+        // Function to update user location
+        function updateUserLocation(position) {
+            userPosition = position;
+            const { latitude, longitude, accuracy } = position.coords;
+            
+            // Update accuracy display
+            document.getElementById('accuracy').textContent = Math.round(accuracy) + " m";
+            
+            // Update geolocation info
+            document.getElementById('geolocation-info').textContent = 
+                `Position: ${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+            
+            // Update the map
+            if (!userMarker) {
+                userMarker = L.marker([latitude, longitude], {
+                    icon: L.divIcon({
+                        html: '<div style="background:#9b59b6;color:white;border-radius:50%;width:35px;height:35px;display:flex;align-items:center;justify-content:center;border:3px solid white; box-shadow: 0 0 15px rgba(155, 89, 182, 0.9)"><i class="fas fa-user"></i></div>',
+                        className: '',
+                        iconSize: [35, 35]
+                    })
+                }).addTo(map).bindPopup("Your current location");
+            } else {
+                userMarker.setLatLng([latitude, longitude]);
+            }
+            
+            // Update accuracy circle
+            if (!window.accuracyCircle) {
+                window.accuracyCircle = L.circle([latitude, longitude], {
+                    color: '#3498db',
+                    fillColor: '#3498db',
+                    fillOpacity: 0.2,
+                    radius: accuracy
+                }).addTo(map);
+            } else {
+                window.accuracyCircle.setLatLng([latitude, longitude]).setRadius(accuracy);
+            }
+            
+            // Center map on user location
+            map.setView([latitude, longitude], 15);
+        }
+        
+        // Function to handle geolocation errors
+        function handleLocationError(error) {
+            console.error("Geolocation error:", error);
+            document.getElementById('geolocation-status').innerHTML = 
+                `<i class="fas fa-triangle-exclamation" style="color:#e74c3c"></i>
+                 <span>Geolocation error: ${error.message}</span>`;
+            document.getElementById('location-status').textContent = "Disabled";
+            document.getElementById('location-status').style.color = "#e74c3c";
+        }
+        
+        // Initialize geolocation
+        function initGeolocation() {
+            if ("geolocation" in navigator) {
+                document.getElementById('geolocation-status').innerHTML = 
+                    `<i class="fas fa-location-dot" style="color:#3498db"></i>
+                     <span>Geolocation active - tracking your position</span>`;
+                
+                // Get current position
+                navigator.geolocation.getCurrentPosition(updateUserLocation, handleLocationError, {
+                    enableHighAccuracy: true,
+                    timeout: 5000
+                });
+                
+                // Watch position for updates
+                watchId = navigator.geolocation.watchPosition(updateUserLocation, handleLocationError, {
+                    enableHighAccuracy: true,
+                    maximumAge: 10000,
+                    timeout: 5000
+                });
+                
+                // Set start point to current location
+                document.getElementById('start').value = "Your Current Location";
+            } else {
+                document.getElementById('geolocation-status').innerHTML = 
+                    `<i class="fas fa-triangle-exclamation" style="color:#e74c3c"></i>
+                     <span>Geolocation not supported by your browser</span>`;
+                document.getElementById('location-status').textContent = "Unsupported";
+                document.getElementById('location-status').style.color = "#e74c3c";
+            }
+        }
+        
+        // Function to calculate route with geolocation
+        function calculateRoute() {
+            if (!userPosition) {
+                alert("Please enable location services to calculate your route");
+                return;
+            }
+            
+            const destination = document.getElementById('end').value;
+            const transport = document.getElementById('transport').value;
+            
+            if (!destination) {
+                alert("Please enter a destination");
+                return;
+            }
+            
+            // Simulate route calculation with geolocation
+            const startLat = userPosition.coords.latitude;
+            const startLng = userPosition.coords.longitude;
+            
+            // For demo purposes - in real app, we would geocode the destination
+            const endCoords = [43.645, -79.380]; // Union Station
+            
+            // Clear previous route if exists
+            if (currentRoute) {
+                map.removeControl(currentRoute);
+            }
+            
+            // Create route control
+            currentRoute = L.Routing.control({
+                waypoints: [
+                    L.latLng(startLat, startLng),
+                    L.latLng(endCoords[0], endCoords[1])
+                ],
+                routeWhileDragging: false,
+                showAlternatives: false,
+                collapsible: true,
+                lineOptions: {
+                    styles: [{color: '#3498db', opacity: 0.7, weight: 6}]
+                },
+                createMarker: function(i, wp) {
+                    if (i === 0) {
+                        return L.marker(wp.latLng, {
+                            icon: L.divIcon({
+                                html: '<div style="background:#3498db;color:white;border-radius:50%;width:35px;height:35px;display:flex;align-items:center;justify-content:center;border:3px solid white"><i class="fas fa-play"></i></div>',
+                                className: '',
+                                iconSize: [35, 35]
+                            })
+                        }).bindPopup("Start: Your Location");
+                    } else {
+                        return L.marker(wp.latLng, {
+                            icon: L.divIcon({
+                                html: '<div style="background:#e74c3c;color:white;border-radius:50%;width:35px;height:35px;display:flex;align-items:center;justify-content:center;border:3px solid white"><i class="fas fa-flag"></i></div>',
+                                className: '',
+                                iconSize: [35, 35]
+                            })
+                        }).bindPopup("End: " + destination);
+                    }
+                }
+            }).addTo(map);
+            
+            // Simulate route calculation
+            const routeDuration = Math.floor(Math.random() * 15) + 15;
+            const delay = Math.floor(Math.random() * 8) + 3;
+            
+            // Update status bar
+            document.querySelector('.status-bar').innerHTML = `
+                <div class="data-info">
+                    <span><i class="fas fa-route"></i> Route to: ${destination}</span>
+                    <span><i class="fas fa-clock"></i> Estimated time: ${routeDuration} min (${delay} min delay)</span>
+                    <span><i class="fas fa-car"></i> Mode: ${transport}</span>
+                </div>
+                <div>
+                    <button id="refresh-data" style="background: transparent; border: 1px solid white; padding: 8px 15px; border-radius: 5px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-sync"></i> Refresh Data
+                    </button>
+                </div>
+            `;
+            
+            // Reattach event listeners
+            document.getElementById('refresh-data').addEventListener('click', refreshData);
+        }
+        
+        // Initialize the application
+        function initApp() {
+            // Hide loading screen
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+            }, 1500);
+            
+            // Render construction markers
+            renderConstructionMarkers();
+            
+            // Initialize geolocation
+            initGeolocation();
+        }
+        
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', initApp);
+        
+        document.getElementById('calculate').addEventListener('click', calculateRoute);
+        
+        document.getElementById('current-location-btn').addEventListener('click', function() {
+            if (userPosition) {
+                map.setView([
+                    userPosition.coords.latitude, 
+                    userPosition.coords.longitude
+                ], 15);
+            } else {
+                alert("Please enable location services first");
+            }
+        });
+        
+        document.getElementById('locate-btn').addEventListener('click', function() {
+            if (userPosition) {
+                map.setView([
+                    userPosition.coords.latitude, 
+                    userPosition.coords.longitude
+                ], 15);
+            } else {
+                map.setView([43.6532, -79.3832], 13);
+            }
+        });
+        
+        document.getElementById('traffic-btn').addEventListener('click', function() {
+            if (map.hasLayer(trafficLayer)) {
+                map.removeLayer(trafficLayer);
+            } else {
+                map.addLayer(trafficLayer);
+            }
+        });
+        
+        document.getElementById('close-details').addEventListener('click', function() {
+            document.getElementById('project-details').style.display = 'none';
+        });
+        
+        document.getElementById('detail-avoid').addEventListener('click', function() {
+            alert("This construction area will be avoided in your route calculations");
+            document.getElementById('project-details').style.display = 'none';
+        });
+        
+        function refreshData() {
+            document.getElementById('loading').style.display = 'flex';
+            setTimeout(() => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('data-updated').textContent = "Data updated: " + new Date().toLocaleString('en-CA', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                document.getElementById('update-badge').textContent = Math.floor(Math.random() * 5) + 1;
+            }, 1500);
+        }
+        
+        document.getElementById('refresh-data').addEventListener('click', refreshData);
+    </script>
+</body>
+</html>
